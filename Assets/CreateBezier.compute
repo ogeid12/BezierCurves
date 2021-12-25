@@ -1,0 +1,34 @@
+#pragma kernel CSMain
+
+RWStructuredBuffer<float3> points;
+RWStructuredBuffer<float3> bezier_points;
+RWStructuredBuffer<int> bicoefs;
+RWStructuredBuffer<float> us;
+int steps;
+
+[numthreads(1, 1, 1)]
+void CSMain (uint3 id : SV_GROUPID)
+{
+	uint num_points;
+	uint stride;
+	points.GetDimensions(num_points, stride);
+
+	float2 sum = float2(0.0, 0.0);
+	float t = id.x / float(steps - 1);
+
+	for(int i = 0; i < int(num_points); i++)
+	{
+		// i cant understand why at t = 0 and t = 1 sum = NaN >_>
+
+		sum += bicoefs[i] * points[i].xy * pow(abs(1 - t), num_points - 1 - i) * pow(abs(t), i);
+		if(isnan(sum.x) || isnan(sum.y))
+		{
+			bezier_points[id.x] = points[t * (num_points - 1)];
+			return;
+		}
+
+	}
+	us[id.x] = t;
+	bezier_points[id.x] = float3(sum.xy, 0);
+}
+
